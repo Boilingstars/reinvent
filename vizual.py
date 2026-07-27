@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Visualize REINVENT-generated molecule distributions across epochs.
 
@@ -198,6 +199,51 @@ def build_fingerprints(smiles: list[str], radius: int, n_bits: int):
     else:
         X = np.zeros((0, n_bits), dtype=np.int8)
     return kept_smiles, fps, X
+
+
+def build_fingerprints_from_df(
+    df: pd.DataFrame,
+    smiles_col: str,
+    radius: int,
+    n_bits: int,
+):
+    """
+    Build fingerprints and return a DataFrame with exactly the same number/order
+    of rows as the fingerprint matrix.
+
+    Important: do NOT align rows by canonical_smiles using set_index().loc[].
+    Generated/reference sets can contain the same molecule more than once, and
+    pandas .loc with duplicate index labels can duplicate rows. That was the
+    reason for errors like:
+        ValueError: Length of values (...) does not match length of index (...)
+    """
+    generator = rdFingerprintGenerator.GetMorganGenerator(radius=radius, fpSize=n_bits)
+
+    df_reset = df.reset_index(drop=True).copy()
+    keep_idx = []
+    fps = []
+    arrays = []
+
+    for i, smi in enumerate(df_reset[smiles_col].tolist()):
+        mol = Chem.MolFromSmiles(str(smi))
+        if mol is None:
+            continue
+        fp = generator.GetFingerprint(mol)
+        arr = np.zeros((n_bits,), dtype=np.int8)
+        DataStructs.ConvertToNumpyArray(fp, arr)
+        keep_idx.append(i)
+        fps.append(fp)
+        arrays.append(arr)
+
+    filtered_df = df_reset.iloc[keep_idx].reset_index(drop=True)
+    kept_smiles = filtered_df[smiles_col].astype(str).tolist()
+
+    if arrays:
+        X = np.vstack(arrays)
+    else:
+        X = np.zeros((0, n_bits), dtype=np.int8)
+
+    return filtered_df, kept_smiles, fps, X
 
 
 def max_tanimoto_to_reference(query_fps, ref_fps, ref_smiles: list[str]):
@@ -444,9 +490,12 @@ def main() -> None:
         unique_valid_n = len(valid_df)
         valid_df = downsample_df(valid_df, args.max_molecules_per_epoch, args.seed)
 
-        smiles, fps, X = build_fingerprints(valid_df["canonical_smiles"].tolist(), args.radius, args.n_bits)
-        valid_df = valid_df[valid_df["canonical_smiles"].isin(smiles)].copy()
-        valid_df = valid_df.set_index("canonical_smiles").loc[smiles].reset_index()
+        valid_df, smiles, fps, X = build_fingerprints_from_df(
+            valid_df,
+            smiles_col="canonical_smiles",
+            radius=args.radius,
+            n_bits=args.n_bits,
+        )
         valid_df["epoch"] = epoch
         valid_df["set"] = "generated"
         all_rows.append(valid_df)
@@ -487,21 +536,30 @@ def main() -> None:
         ref_df = canonicalize_df(ref_df)
         ref_df = ref_df[ref_df["is_valid"]].drop_duplicates("canonical_smiles", keep="first").copy()
 
-        ref_smiles, ref_fps, ref_X = build_fingerprints(ref_df["canonical_smiles"].tolist(), args.radius, args.n_bits)
+        ref_df_fp, ref_smiles, ref_fps, ref_X = build_fingerprints_from_df(
+            ref_df,
+            smiles_col="canonical_smiles",
+            radius=args.radius,
+            n_bits=args.n_bits,
+        )
 
-        ref_df_vis = ref_df[ref_df["canonical_smiles"].isin(ref_smiles)].copy()
-        ref_df_vis = ref_df_vis.set_index("canonical_smiles").loc[ref_smiles].reset_index()
+        ref_df_vis = ref_df_fp.copy()
         ref_df_vis["epoch"] = "reference"
         ref_df_vis["set"] = "reference"
         ref_df_vis = downsample_df(ref_df_vis, args.max_reference_molecules, args.seed)
 
         # Compute max Tanimoto to reference for all generated molecules.
-        gen_smiles, gen_fps, _ = build_fingerprints(mol_df["canonical_smiles"].tolist(), args.radius, args.n_bits)
+        mol_df_fp, gen_smiles, gen_fps, _ = build_fingerprints_from_df(
+            mol_df,
+            smiles_col="canonical_smiles",
+            radius=args.radius,
+            n_bits=args.n_bits,
+        )
         max_tani, nearest = max_tanimoto_to_reference(gen_fps, ref_fps, ref_smiles)
 
-        # mol_df order should match gen_smiles after filtering; enforce it.
-        mol_df = mol_df[mol_df["canonical_smiles"].isin(gen_smiles)].copy()
-        mol_df = mol_df.set_index("canonical_smiles").loc[gen_smiles].reset_index()
+        # Keep the row order returned by build_fingerprints_from_df.
+        # This is safe even when the same canonical SMILES occurs in several epochs.
+        mol_df = mol_df_fp.copy()
         mol_df["max_tanimoto_to_reference"] = max_tani
         mol_df["nearest_reference_smiles"] = nearest
         mol_df["exact_in_reference"] = mol_df["max_tanimoto_to_reference"] >= 0.999999
@@ -553,9 +611,19 @@ def main() -> None:
             ignore_index=True,
         )
 
-    cloud_smiles, cloud_fps, cloud_X = build_fingerprints(cloud_df["canonical_smiles"].tolist(), args.radius, args.n_bits)
-    cloud_df = cloud_df[cloud_df["canonical_smiles"].isin(cloud_smiles)].copy()
-    cloud_df = cloud_df.set_index("canonical_smiles").loc[cloud_smiles].reset_index()
+    cloud_df, cloud_smiles, cloud_fps, cloud_X = build_fingerprints_from_df(
+        cloud_df,
+        smiles_col="canonical_smiles",
+        radius=args.radius,
+        n_bits=args.n_bits,
+    )
+
+    # Extra safety check: table and fingerprint matrix must have the same length.
+    if len(cloud_df) != cloud_X.shape[0]:
+        raise RuntimeError(
+            f"Internal length mismatch: cloud_df has {len(cloud_df)} rows, "
+            f"but fingerprint matrix has {cloud_X.shape[0]} rows."
+        )
 
     # PCA cloud.
     print("Computing PCA embedding...")
