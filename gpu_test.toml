@@ -3,6 +3,7 @@ device = "cuda:0"
 json_out_config = "_sampling.json"
 
 [parameters]
+# model_file = "TL_reinvent.model"
 model_file = "priors/reinvent.prior"
 smiles_file = "test.smi"           # your input set, 1 compound per line
 sample_strategy = "multinomial"    # multinomial (diverse) or beamsearch (deterministic)

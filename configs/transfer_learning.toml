@@ -17,3 +17,4 @@ standardize_smiles = true
 randomize_smiles = true           # data augmentation — important for small sets
 randomize_all_smiles = false
 internal_diversity = true
+
