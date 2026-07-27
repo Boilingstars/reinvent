@@ -67,9 +67,9 @@ def load_and_prepare_data(csv_path: Path, smiles_out: Path, solvents_out: Path):
 
 if __name__ == "__main__":
     # Укажите пути к файлам
-    INPUT_CSV = Path(r"C:\\Users\\Evgen\\Desktop\\reinvent\\transfer_learning\\absorption_train.csv")
-    OUTPUT_SMILES = Path("chromophores.smi")
-    OUTPUT_SOLVENTS = Path("solvents.smi")
+    INPUT_CSV = Path(r"C:\\Users\\Evgen\\Desktop\\reinvent\\transfer_learning\\absorption_val.csv")
+    OUTPUT_SMILES = Path("val.smi")
+    OUTPUT_SOLVENTS = Path("solvents_val.smi")
 
     if not INPUT_CSV.exists():
         print(f"Файл {INPUT_CSV} не найден!")
