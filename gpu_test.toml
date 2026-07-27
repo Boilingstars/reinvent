@@ -4,7 +4,7 @@ json_out_config = "_sampling.json"
 
 [parameters]
 model_file = "priors/reinvent.prior"
-smiles_file = "train.smi"          # your input set, 1 compound per line
+smiles_file = "test.smi"           # your input set, 1 compound per line
 sample_strategy = "multinomial"    # multinomial (diverse) or beamsearch (deterministic)
 temperature = 1.0                  # higher = more diverse, multinomial only
 output_file = "finetuned.csv"
