@@ -1,19 +1,13 @@
 """
 vizualization_hist.py — гистограммы и boxplot'ы для сравнения эпох
 предобучения REINVENT по индексу Танимото.
-
-Строит:
-  1) Распределение максимального Tanimoto к обучающей выборке по эпохам.
-  2) Boxplot тех же распределений.
-  3) Линейный график метрик (mean_intra, mean_max_to_train) от эпохи.
-  4) Матрицу "эпоха × эпоха" среднего Tanimoto между эпохами.
-
-Вход: результат работы tanimoto.py (summary CSV) и
-       pickle/npz с распределениями max_sim_to_train.
 """
 
 import argparse
+import csv
 import os
+import re
+import sys
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -29,7 +23,7 @@ except ImportError:
 
 
 # ---------------------------------------------------------------------------
-# Вспомогательные функции (повторяют tanimoto.py, но с упором на распределения)
+# Вспомогательные функции
 # ---------------------------------------------------------------------------
 
 def _canon(smi: str):
@@ -44,13 +38,27 @@ def _fp(smi: str, radius: int = 2, n_bits: int = 2048):
     return AllChem.GetMorganFingerprintAsBitVect(m, radius, nBits=n_bits)
 
 
-def load_train_fps(path: str, radius: int, n_bits: int):
+def load_train_fps(path: str, radius: int, n_bits: int,
+                   encoding: str = 'utf-8', sep: str = ','):
     if path.endswith(".csv"):
-        df = pd.read_csv(path)
-        col = "smiles" if "smiles" in df.columns else df.columns[0]
-        smis = df[col].dropna().astype(str).tolist()
+        for enc in (encoding, 'utf-8-sig', 'utf-8', 'cp1251', 'latin-1'):
+            try:
+                df = pd.read_csv(path, encoding=enc, sep=sep)
+                break
+            except Exception:
+                continue
+        else:
+            raise ValueError(f"Не удалось прочитать {path} ни в одной кодировке")
+        smiles_col = None
+        for col in df.columns:
+            if 'smiles' in col.lower():
+                smiles_col = col
+                break
+        if smiles_col is None:
+            smiles_col = df.columns[0]
+        smis = df[smiles_col].dropna().astype(str).tolist()
     else:
-        with open(path) as f:
+        with open(path, encoding=encoding) as f:
             smis = [l.strip() for l in f if l.strip() and not l.startswith("#")]
     fps = []
     for s in smis:
@@ -63,13 +71,165 @@ def load_train_fps(path: str, radius: int, n_bits: int):
     return fps
 
 
+_CSV_ENCODINGS = ('utf-8-sig', 'utf-8', 'cp1251', 'cp1252', 'latin-1')
+_HEADER_TOKENS = frozenset({
+    'SMILES', 'SMILES_STATE', 'NLL', 'INPUT_SMILES', 'TANIMOTO',
+})
+_SMILES_PATTERN = re.compile(r'^[A-Za-z0-9@+\-\[\]()=#$%\\/\.:]+$')
+
+
+def _encoding_candidates(preferred: str = 'utf-8'):
+    seen = set()
+    for enc in (preferred, *_CSV_ENCODINGS):
+        if enc and enc not in seen:
+            seen.add(enc)
+            yield enc
+
+
+def _is_probably_text(raw: bytes) -> bool:
+    if not raw:
+        return False
+    if raw[:2] == b'PK' or raw[:4] in (b'\x89PNG', b'\x80\x04\x8a\x00'):
+        return False
+    sample = raw[:8192]
+    ctrl = sum(1 for b in sample if b == 0 or (b < 32 and b not in (9, 10, 13)))
+    return ctrl / len(sample) < 0.02
+
+
+def _looks_like_smiles(value: str) -> bool:
+    s = value.strip()
+    if len(s) < 2:
+        return False
+    if s.upper() in _HEADER_TOKENS:
+        return False
+    if not _SMILES_PATTERN.match(s):
+        return False
+    return bool(re.search(r'[A-Za-z]', s))
+
+
+def _decode_text(raw: bytes, preferred: str = 'utf-8'):
+    for enc in _encoding_candidates(preferred):
+        try:
+            return raw.decode(enc), enc
+        except UnicodeDecodeError:
+            continue
+    return raw.decode('latin-1'), 'latin-1'
+
+
+def _extract_smiles_from_line(line: str, sep: str = ',') -> str | None:
+    line = line.strip()
+    if not line or line.startswith('#'):
+        return None
+    for sep_try in dict.fromkeys((sep, ',', '\t', ';')):
+        try:
+            fields = next(csv.reader([line], delimiter=sep_try))
+        except csv.Error:
+            continue
+        if not fields:
+            continue
+        candidate = fields[0].strip()
+        if _looks_like_smiles(candidate):
+            return candidate
+    if _looks_like_smiles(line):
+        return line
+    return None
+
+
+def _smiles_from_dataframe(df: pd.DataFrame) -> list[str]:
+    for col in df.columns:
+        if 'smiles' in str(col).lower():
+            return df[col].dropna().astype(str).str.strip().tolist()
+    if df.shape[1] > 1:
+        return df.iloc[:, 0].dropna().astype(str).str.strip().tolist()
+    parts = df.iloc[:, 0].astype(str).str.split(',', n=1, expand=True)
+    if parts.shape[1] >= 1:
+        return parts[0].str.strip().tolist()
+    return df.iloc[:, 0].dropna().astype(str).str.strip().tolist()
+
+
+def _filter_smiles(candidates: list[str]) -> list[str]:
+    seen = set()
+    out = []
+    for item in candidates:
+        if not _looks_like_smiles(item):
+            continue
+        smi = item.strip()
+        if smi not in seen:
+            seen.add(smi)
+            out.append(smi)
+    return out
+
+
+def load_smiles_from_epoch_file(filepath: str, encoding: str = 'utf-8',
+                                sep: str = ',') -> list[str]:
+    """Читает REINVENT CSV и возвращает SMILES из первой колонки.
+
+    Поддерживает:
+    - стандартный REINVENT CSV с заголовком SMILES,...
+    - строки вида ``SMILES,state,NLL`` без заголовка
+    - utf-8, utf-8-sig, cp1251, cp1252, latin-1
+    """
+    with open(filepath, 'rb') as fh:
+        raw = fh.read()
+
+    if not _is_probably_text(raw):
+        raise ValueError(f"{filepath}: файл не похож на текстовый CSV")
+
+    text, used_enc = _decode_text(raw, encoding)
+    line_smiles = []
+    for line in text.splitlines():
+        smi = _extract_smiles_from_line(line, sep=sep)
+        if smi:
+            line_smiles.append(smi)
+
+    if line_smiles:
+        print(f"    Прочитано {len(line_smiles)} SMILES из {os.path.basename(filepath)} "
+              f"(encoding={used_enc})")
+        print(f"    Пример: {line_smiles[0][:80]}")
+        return line_smiles
+
+    for enc in _encoding_candidates(encoding):
+        for sep_try in dict.fromkeys((sep, ',', '\t', ';')):
+            for header in ('infer', None):
+                try:
+                    df = pd.read_csv(
+                        filepath,
+                        encoding=enc,
+                        sep=sep_try,
+                        header=0 if header == 'infer' else None,
+                    )
+                    if df.empty:
+                        continue
+                    valid = _filter_smiles(_smiles_from_dataframe(df))
+                    if valid:
+                        print(f"    Прочитано {len(valid)} SMILES из {os.path.basename(filepath)} "
+                              f"(pandas, encoding={enc}, sep={repr(sep_try)})")
+                        print(f"    Пример: {valid[0][:80]}")
+                        return valid
+                except Exception:
+                    continue
+
+    raise ValueError(
+        f"В {filepath} не найдено валидных SMILES "
+        f"(проверены кодировки: {', '.join(_encoding_candidates(encoding))})"
+    )
+
+
 def collect_epoch_distributions(results_dir: str, train_fps, radius: int, n_bits: int,
-                                max_per_epoch: int = 5000):
-    """Собирает распределения (max_sim_to_train) по эпохам."""
+                                max_per_epoch: int = 5000,
+                                encoding: str = 'utf-8', sep: str = ','):
     import glob
     from collections import defaultdict
 
     files = sorted(glob.glob(os.path.join(results_dir, "samples_epoch_*.csv")))
+    if not files:
+        print("[WARN] Не найдено ни одного файла samples_epoch_*.csv")
+        return {}
+
+    print(f"[INFO] Найдено файлов: {len(files)}")
+    for f in files:
+        print(f"  {os.path.basename(f)}")
+
     epoch_to_files = defaultdict(list)
     for f in files:
         name = os.path.basename(f)
@@ -77,16 +237,23 @@ def collect_epoch_distributions(results_dir: str, train_fps, radius: int, n_bits
         if not digits:
             continue
         epoch = int(digits)
-        if 0 < epoch < 10000:
+        if 0 <= epoch < 10000:   # включаем эпоху 0
             epoch_to_files[epoch].append(f)
 
     distributions = {}
     for ep in sorted(epoch_to_files):
         smiles = []
         for f in epoch_to_files[ep]:
-            df = pd.read_csv(f)
-            col = "smiles" if "smiles" in df.columns else df.columns[0]
-            smiles.extend(df[col].dropna().astype(str).tolist())
+            try:
+                smiles.extend(load_smiles_from_epoch_file(f, encoding=encoding, sep=sep))
+            except Exception as e:
+                print(f"[ERROR] {f} не прочитан: {e}")
+                continue
+
+        if not smiles:
+            print(f"  epoch {ep:>3}: нет молекул, пропускаем")
+            continue
+
         if max_per_epoch and len(smiles) > max_per_epoch:
             smiles = list(np.random.RandomState(42).choice(
                 smiles, size=max_per_epoch, replace=False))
@@ -101,19 +268,20 @@ def collect_epoch_distributions(results_dir: str, train_fps, radius: int, n_bits
                 continue
             sims = DataStructs.BulkTanimotoSimilarity(fp, train_fps)
             max_sims.append(float(max(sims)))
+        if not max_sims:
+            print(f"  epoch {ep:>3}: нет валидных молекул после RDKit, пропускаем")
+            continue
         distributions[ep] = np.array(max_sims, dtype=np.float32)
-        print(f"  epoch {ep:>3}: {len(max_sims)} molecules, "
-              f"mean={max_sims.mean() if len(max_sims) else 0:.3f}")
+        print(f"  epoch {ep:>3}: {len(max_sims)} molecules, mean={max_sims.mean():.3f}")
     return distributions
 
 
 # ---------------------------------------------------------------------------
-# Визуализация
+# Визуализация (без изменений)
 # ---------------------------------------------------------------------------
 
 def plot_overlay_histograms(distributions: dict, out_path: str,
                             title: str = "Max Tanimoto to training set per epoch"):
-    """Наложенные гистограммы распределений max_sim_to_train по эпохам."""
     plt.figure(figsize=(10, 6))
     cmap = plt.get_cmap("viridis")
     epochs = sorted(distributions.keys())
@@ -138,12 +306,11 @@ def plot_overlay_histograms(distributions: dict, out_path: str,
     plt.tight_layout()
     plt.savefig(out_path, dpi=200)
     plt.close()
-    print(f"[OK] сохранено: {out_path}")
+    print(f"[OK] сохранено: {os.path.abspath(out_path)}")
 
 
 def plot_grid_histograms(distributions: dict, out_path: str,
                          title: str = "Per-epoch Tanimoto distribution"):
-    """Сетка гистограмм — по одной на эпоху."""
     epochs = sorted(distributions.keys())
     n = len(epochs)
     if n == 0:
@@ -167,7 +334,6 @@ def plot_grid_histograms(distributions: dict, out_path: str,
         ax.set_ylabel("Count")
         ax.grid(alpha=0.3)
 
-    # пустые подграфики
     for j in range(n, rows * cols):
         r, c = divmod(j, cols)
         axes[r][c].axis("off")
@@ -176,12 +342,11 @@ def plot_grid_histograms(distributions: dict, out_path: str,
     fig.tight_layout()
     fig.savefig(out_path, dpi=200)
     plt.close(fig)
-    print(f"[OK] сохранено: {out_path}")
+    print(f"[OK] сохранено: {os.path.abspath(out_path)}")
 
 
 def plot_boxplots(distributions: dict, out_path: str,
                   title: str = "Boxplot: max Tanimoto to train by epoch"):
-    """Boxplot распределений по эпохам."""
     epochs = sorted(distributions.keys())
     data = [distributions[e] for e in epochs if len(distributions[e])]
     labels = [f"e{e}" for e in epochs if len(distributions[e])]
@@ -199,15 +364,22 @@ def plot_boxplots(distributions: dict, out_path: str,
     plt.tight_layout()
     plt.savefig(out_path, dpi=200)
     plt.close()
-    print(f"[OK] сохранено: {out_path}")
+    print(f"[OK] сохранено: {os.path.abspath(out_path)}")
 
 
-def plot_metric_curves(summary_csv: str, out_path: str):
-    """Линейные графики mean_intra_tanimoto и mean_max_sim_to_train от эпохи."""
+def plot_metric_curves(summary_csv: str, out_path: str,
+                       encoding: str = 'utf-8', sep: str = ','):
     if not os.path.isfile(summary_csv):
         print(f"[WARN] {summary_csv} не найден — пропускаю metric curves.")
         return
-    df = pd.read_csv(summary_csv)
+    try:
+        df = pd.read_csv(summary_csv, encoding=encoding, sep=sep)
+    except UnicodeDecodeError:
+        try:
+            df = pd.read_csv(summary_csv, encoding='latin-1', sep=sep)
+        except Exception as e:
+            print(f"[ERROR] Не удалось прочитать {summary_csv}: {e}")
+            return
     if df.empty:
         return
     df = df.sort_values("epoch")
@@ -227,7 +399,6 @@ def plot_metric_curves(summary_csv: str, out_path: str):
              label="mean_max_sim_to_train")
     ax2.tick_params(axis="y", labelcolor=color2)
 
-    # маркер лучшей эпохи по max_sim_to_train
     if df["mean_max_sim_to_train"].notna().any():
         best_idx = df["mean_max_sim_to_train"].idxmax()
         ax2.axvline(df.loc[best_idx, "epoch"], color="green",
@@ -238,62 +409,83 @@ def plot_metric_curves(summary_csv: str, out_path: str):
     fig.tight_layout()
     fig.savefig(out_path, dpi=200)
     plt.close(fig)
-    print(f"[OK] сохранено: {out_path}")
+    print(f"[OK] сохранено: {os.path.abspath(out_path)}")
 
 
 # ---------------------------------------------------------------------------
-# CLI
+# CLI и запуск из IDE
 # ---------------------------------------------------------------------------
 
-def main():
+def main(argv=None):
     p = argparse.ArgumentParser(description="Гистограммы Танимото по эпохам REINVENT.")
-    p.add_argument("--train", required=True, help="train.smi")
-    p.add_argument("--results_dir", required=True, help="папка с samples_epoch_*.csv")
+    p.add_argument("--train", required=True, help="Путь к train.smi или train.csv")
+    p.add_argument("--results_dir", required=True, help="Папка с samples_epoch_*.csv")
     p.add_argument("--summary_csv", default="tanimoto_summary.csv")
     p.add_argument("--out_dir", default="hist_plots")
     p.add_argument("--radius", type=int, default=2)
     p.add_argument("--n_bits", type=int, default=2048)
     p.add_argument("--max_per_epoch", type=int, default=5000)
-    args = p.parse_args()
+    p.add_argument("--encoding", default="utf-8")
+    p.add_argument("--sep", default=",")
+
+    args = p.parse_args(argv)
 
     os.makedirs(args.out_dir, exist_ok=True)
     print("[INFO] загружаю train fingerprints ...")
-    train_fps = load_train_fps(args.train, args.radius, args.n_bits)
+    train_fps = load_train_fps(args.train, args.radius, args.n_bits,
+                               encoding=args.encoding, sep=args.sep)
     print(f"  train molecules: {len(train_fps)}")
 
     print("[INFO] собираю распределения по эпохам ...")
     dists = collect_epoch_distributions(
         args.results_dir, train_fps, args.radius, args.n_bits,
         max_per_epoch=args.max_per_epoch,
+        encoding=args.encoding, sep=args.sep,
     )
+    dists = {ep: arr for ep, arr in dists.items() if len(arr) > 0}
     if not dists:
         print("[WARN] распределения пусты — нечего рисовать.")
         return
 
-    # сохраним распределения для последующего использования (например, в UMAP)
     npz_path = os.path.join(args.out_dir, "tanimoto_distributions.npz")
     np.savez(npz_path, **{f"epoch_{ep}": arr for ep, arr in dists.items()})
-    print(f"[OK] распределения сохранены: {npz_path}")
+    print(f"[OK] распределения сохранены: {os.path.abspath(npz_path)}")
 
-    plot_overlay_histograms(
-        dists,
-        os.path.join(args.out_dir, "hist_overlay.png"),
-    )
-    plot_grid_histograms(
-        dists,
-        os.path.join(args.out_dir, "hist_grid.png"),
-    )
-    plot_boxplots(
-        dists,
-        os.path.join(args.out_dir, "boxplot.png"),
-    )
-    plot_metric_curves(
-        args.summary_csv,
-        os.path.join(args.out_dir, "metric_curves.png"),
-    )
+    out_files = []
+    overlay_path = os.path.join(args.out_dir, "hist_overlay.png")
+    plot_overlay_histograms(dists, overlay_path)
+    out_files.append(overlay_path)
 
+    grid_path = os.path.join(args.out_dir, "hist_grid.png")
+    plot_grid_histograms(dists, grid_path)
+    out_files.append(grid_path)
+
+    box_path = os.path.join(args.out_dir, "boxplot.png")
+    plot_boxplots(dists, box_path)
+    out_files.append(box_path)
+
+    curves_path = os.path.join(args.out_dir, "metric_curves.png")
+    plot_metric_curves(args.summary_csv, curves_path,
+                       encoding=args.encoding, sep=args.sep)
+    if os.path.exists(curves_path):
+        out_files.append(curves_path)
+
+    print("\n" + "=" * 60)
+    print("ВСЕ СОЗДАННЫЕ ФАЙЛЫ:")
+    for f in out_files:
+        print(f"  {os.path.abspath(f)}")
+    print("=" * 60)
     print("[DONE]")
 
 
 if __name__ == "__main__":
-    main()
+    # Запуск из IDE – укажите свои пути
+    main([
+        "--train", "train.smi",
+        "--results_dir", "./samples_epoch_dir",
+        "--summary_csv", "./reinvent_graphics/tanimoto_summary.csv",
+        "--out_dir", "./reinvent_graphics",
+        "--radius", "2",
+        "--n_bits", "2048",
+        "--max_per_epoch", "5000",
+    ])
