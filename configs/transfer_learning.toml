@@ -9,9 +9,9 @@ batch_size = 100
 sample_batch_size = 2000          # sampled each epoch to compute stats
 
 input_model_file = "priors/reinvent.prior"    # the prior you're fine-tuning
-output_model_file = "TL_reinvent.model"       # the fine-tuned model you get out
-smiles_file = "train.smi"
-validation_smiles_file = "val.smi"
+output_model_file = "checkpoints/TL_reinvent.model"       # the fine-tuned model you get out
+smiles_file = "data/train.smi"
+validation_smiles_file = "data/val.smi"
 
 standardize_smiles = true
 randomize_smiles = true           # data augmentation — important for small sets

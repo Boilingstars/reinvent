@@ -14,9 +14,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 try:
-    from rdkit import Chem
+    from rdkit import Chem, RDLogger
     from rdkit.Chem import AllChem, DataStructs
-    from rdkit import RDLogger
     RDLogger.DisableLog("rdApp.*")
 except ImportError:
     raise SystemExit("Нужен RDKit: pip install rdkit-pypi")
@@ -272,42 +271,12 @@ def collect_epoch_distributions(results_dir: str, train_fps, radius: int, n_bits
             print(f"  epoch {ep:>3}: нет валидных молекул после RDKit, пропускаем")
             continue
         distributions[ep] = np.array(max_sims, dtype=np.float32)
-        print(f"  epoch {ep:>3}: {len(max_sims)} molecules, mean={max_sims.mean():.3f}")
+        print(f"  epoch {ep:>3}: {len(max_sims)} molecules, mean={distributions[ep].mean():.3f}")
     return distributions
 
-
 # ---------------------------------------------------------------------------
-# Визуализация (без изменений)
+# Визуализация
 # ---------------------------------------------------------------------------
-
-def plot_overlay_histograms(distributions: dict, out_path: str,
-                            title: str = "Max Tanimoto to training set per epoch"):
-    plt.figure(figsize=(10, 6))
-    cmap = plt.get_cmap("viridis")
-    epochs = sorted(distributions.keys())
-    if not epochs:
-        print("[WARN] нет распределений для построения гистограммы.")
-        return
-    norm = plt.Normalize(min(epochs), max(epochs))
-
-    for ep in epochs:
-        arr = distributions[ep]
-        if len(arr) == 0:
-            continue
-        color = cmap(norm(ep))
-        plt.hist(arr, bins=40, alpha=0.45, density=True,
-                 color=color, label=f"epoch {ep}")
-
-    plt.xlabel("Tanimoto (max to nearest train neighbor)")
-    plt.ylabel("Density")
-    plt.title(title)
-    plt.legend(title="Epoch", loc="upper left", fontsize=9)
-    plt.grid(alpha=0.3)
-    plt.tight_layout()
-    plt.savefig(out_path, dpi=200)
-    plt.close()
-    print(f"[OK] сохранено: {os.path.abspath(out_path)}")
-
 
 def plot_grid_histograms(distributions: dict, out_path: str,
                          title: str = "Per-epoch Tanimoto distribution"):
@@ -320,15 +289,27 @@ def plot_grid_histograms(distributions: dict, out_path: str,
     rows = int(np.ceil(n / cols))
     fig, axes = plt.subplots(rows, cols, figsize=(5 * cols, 3.5 * rows), squeeze=False)
 
+    n_bins = 30
+    x_min, x_max = 0.0, 1.0
+    ymax = 0
+    for ep in epochs:
+        arr = distributions[ep]
+        if len(arr):
+            counts, _ = np.histogram(arr, bins=n_bins, range=(x_min, x_max))
+            ymax = max(ymax, int(counts.max()))
+
     for idx, ep in enumerate(epochs):
         r, c = divmod(idx, cols)
         ax = axes[r][c]
         arr = distributions[ep]
         if len(arr):
-            ax.hist(arr, bins=30, color="steelblue", edgecolor="white", alpha=0.85)
+            ax.hist(arr, bins=n_bins, range=(x_min, x_max),
+                    color="steelblue", edgecolor="white", alpha=0.85)
             mean_v = arr.mean()
             ax.axvline(mean_v, color="red", linestyle="--", label=f"mean={mean_v:.3f}")
             ax.legend(fontsize=8)
+        ax.set_xlim(x_min, x_max)
+        ax.set_ylim(0, ymax if ymax > 0 else 1)
         ax.set_title(f"epoch {ep}  (n={len(arr)})")
         ax.set_xlabel("Max Tanimoto")
         ax.set_ylabel("Count")
@@ -343,74 +324,6 @@ def plot_grid_histograms(distributions: dict, out_path: str,
     fig.savefig(out_path, dpi=200)
     plt.close(fig)
     print(f"[OK] сохранено: {os.path.abspath(out_path)}")
-
-
-def plot_boxplots(distributions: dict, out_path: str,
-                  title: str = "Boxplot: max Tanimoto to train by epoch"):
-    epochs = sorted(distributions.keys())
-    data = [distributions[e] for e in epochs if len(distributions[e])]
-    labels = [f"e{e}" for e in epochs if len(distributions[e])]
-    if not data:
-        return
-    plt.figure(figsize=(max(8, 0.7 * len(labels) + 4), 6))
-    bp = plt.boxplot(data, labels=labels, patch_artist=True, showmeans=True,
-                     meanline=True)
-    for patch in bp["boxes"]:
-        patch.set_facecolor("#a3c4f3")
-    plt.ylabel("Max Tanimoto to nearest train neighbor")
-    plt.xlabel("Epoch")
-    plt.title(title)
-    plt.grid(axis="y", alpha=0.3)
-    plt.tight_layout()
-    plt.savefig(out_path, dpi=200)
-    plt.close()
-    print(f"[OK] сохранено: {os.path.abspath(out_path)}")
-
-
-def plot_metric_curves(summary_csv: str, out_path: str,
-                       encoding: str = 'utf-8', sep: str = ','):
-    if not os.path.isfile(summary_csv):
-        print(f"[WARN] {summary_csv} не найден — пропускаю metric curves.")
-        return
-    try:
-        df = pd.read_csv(summary_csv, encoding=encoding, sep=sep)
-    except UnicodeDecodeError:
-        try:
-            df = pd.read_csv(summary_csv, encoding='latin-1', sep=sep)
-        except Exception as e:
-            print(f"[ERROR] Не удалось прочитать {summary_csv}: {e}")
-            return
-    if df.empty:
-        return
-    df = df.sort_values("epoch")
-    fig, ax1 = plt.subplots(figsize=(9, 5))
-
-    color1 = "tab:blue"
-    ax1.set_xlabel("Epoch")
-    ax1.set_ylabel("Mean intra-Tanimoto", color=color1)
-    ax1.plot(df["epoch"], df["mean_intra_tanimoto"], "o-", color=color1,
-             label="mean_intra_tanimoto")
-    ax1.tick_params(axis="y", labelcolor=color1)
-
-    ax2 = ax1.twinx()
-    color2 = "tab:red"
-    ax2.set_ylabel("Mean max Tanimoto → train", color=color2)
-    ax2.plot(df["epoch"], df["mean_max_sim_to_train"], "s-", color=color2,
-             label="mean_max_sim_to_train")
-    ax2.tick_params(axis="y", labelcolor=color2)
-
-    if df["mean_max_sim_to_train"].notna().any():
-        best_idx = df["mean_max_sim_to_train"].idxmax()
-        ax2.axvline(df.loc[best_idx, "epoch"], color="green",
-                    linestyle=":", alpha=0.6,
-                    label=f"best: epoch {df.loc[best_idx, 'epoch']}")
-
-    fig.suptitle("Tanimoto metrics vs epoch")
-    fig.tight_layout()
-    fig.savefig(out_path, dpi=200)
-    plt.close(fig)
-    print(f"[OK] сохранено: {os.path.abspath(out_path)}")
-
 
 # ---------------------------------------------------------------------------
 # CLI и запуск из IDE
@@ -452,23 +365,10 @@ def main(argv=None):
     print(f"[OK] распределения сохранены: {os.path.abspath(npz_path)}")
 
     out_files = []
-    overlay_path = os.path.join(args.out_dir, "hist_overlay.png")
-    plot_overlay_histograms(dists, overlay_path)
-    out_files.append(overlay_path)
 
     grid_path = os.path.join(args.out_dir, "hist_grid.png")
     plot_grid_histograms(dists, grid_path)
     out_files.append(grid_path)
-
-    box_path = os.path.join(args.out_dir, "boxplot.png")
-    plot_boxplots(dists, box_path)
-    out_files.append(box_path)
-
-    curves_path = os.path.join(args.out_dir, "metric_curves.png")
-    plot_metric_curves(args.summary_csv, curves_path,
-                       encoding=args.encoding, sep=args.sep)
-    if os.path.exists(curves_path):
-        out_files.append(curves_path)
 
     print("\n" + "=" * 60)
     print("ВСЕ СОЗДАННЫЕ ФАЙЛЫ:")
@@ -479,12 +379,11 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-    # Запуск из IDE – укажите свои пути
     main([
-        "--train", "train.smi",
-        "--results_dir", "./samples_epoch_dir",
-        "--summary_csv", "./reinvent_graphics/tanimoto_summary.csv",
-        "--out_dir", "./reinvent_graphics",
+        "--train", "data/train.smi",
+        "--results_dir", "./samples_by_epoch",
+        "--summary_csv", "./epochs/tanimoto_summary.csv",
+        "--out_dir", "./epochs",
         "--radius", "2",
         "--n_bits", "2048",
         "--max_per_epoch", "5000",

@@ -1,0 +1,53 @@
+17:19:46 <INFO> Started REINVENT 4.8.24 (C) AstraZeneca 2017, 2023 on 2026-07-28
+17:19:46 <INFO> Command line: /home/User20/project9/.venv/bin/reinvent -l gpu_test.log gpu_test.toml
+17:19:46 <INFO> Reading run configuration from /home/User20/project9/reinvent/gpu_test.toml using format toml
+17:19:46 <INFO> User User20 on host school20
+17:19:46 <INFO> Python version 3.12.3
+17:19:46 <INFO> PyTorch version 2.12.0+cu126 git 7661cd9c6b841b62b7f411aa52ec51f05457263b
+17:19:46 <INFO> PyTorch compiled with CUDA version 12.6
+17:19:46 <INFO> RDKit version 2026.03.4
+17:19:46 <INFO> Platform Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+17:19:46 <INFO> CUDA driver version 580.159.03
+17:19:46 <INFO> Number of PyTorch CUDA devices 4
+17:19:46 <INFO> Using GPU device:0 Tesla V100-SXM3-32GB
+17:19:46 <INFO> GPU memory: 31597 MiB free, 32494 MiB total
+17:19:46 <INFO> Writing JSON config file to /home/User20/project9/reinvent/_sampling.json
+17:19:46 <INFO> Starting Sampling
+17:19:46 <INFO> /home/User20/project9/reinvent/TL_reinvent.model.2.chkpt has valid hash:
+{ 'comments': ['test small batch size', 'TL', 'TL', 'TL'],
+  'creation_date': 1741157561.98086,
+  'date_format': 'UNIX epoch',
+  'hash_id': '8765bc970a5fd04042727f987fb6f4c5',
+  'hash_id_format': 'xxhash.xxh3_128_hex 3.8.1',
+  'model_id': UUID('4178afaa-e86f-4baf-a5e1-2c324c401e7f'),
+  'model_id_format': 'uuid.uuid4 3.10.16',
+  'origina_data_source': 'PubChem 2024-06-03',
+  'updates': [1741606576.2719467, 1785177445.904879, 1785177451.2971098]}
+17:19:46 <INFO> Number of network parameters: 5,880,195
+17:19:46 <INFO> Network architecture:
+RNN(
+  (_embedding): Embedding(131, 256)
+  (_rnn): LSTM(256, 512, num_layers=3, batch_first=True)
+  (_linear): Linear(in_features=512, out_features=131, bias=True)
+)
+17:19:46 <INFO> Using generator Reinvent
+17:19:46 <INFO> Writing sampled SMILES to CSV file samples_epoch_002.csv
+17:19:46 <INFO> Sampling 24500 SMILES from model TL_reinvent.model.2.chkpt
+17:19:47 <INFO> Sampled SMILES O=c1n2cccc(c2sc1-c1ccc([N+]([O-])=O)o1)C failed to sanitize.
+17:19:47 <INFO> Sampled SMILES c1(sc(NC(=C(C#N)C#N)c2ccccc2)nn1)-c1ccc(cc1)-c1ccc(-c2ccc(-c3sc(-c4ccccc4)c4c3nsn4)c(c2)C#N)s1 failed to sanitize.
+17:19:47 <INFO> Sampled SMILES c1c2c3ccccc3n3c4ccccc4c(c(C(c4ccc(cc4)-c4ccc5c(cccc5)c4)=O)c32)cc1 failed to sanitize.
+17:19:47 <INFO> Sampled SMILES c1(ccccc1O)-c1cc2c3-c(sc2cc1)c1c(c2c(c4ccccc4c13)cccc2)C failed to sanitize.
+17:19:47 <INFO> Sampled SMILES Cc1c(N=c2cc3oc4ccccc4c-3oc3cc(c(cc-23)Cl)=O)c(cc(N(CC)CC)c1)C failed to sanitize.
+17:19:47 <INFO> Sampled SMILES CCCCOC1C(=C2C3=C(c4c(OC)c(C=O)ccc4N(CC)C=3C1CC)c1cc(CC)sc1C=2CCCC)CCCC failed to sanitize.
+17:19:47 <INFO> Sampled SMILES c12n3c4cc(ccc4c1cc(-c1ccc(-c4ccncc4)cc1)nc2)ccc3-c1ccc(OC)cc1 failed to sanitize.
+17:19:47 <INFO> Sampled SMILES C(\C(O)=O)=C/c1ccc(C#Cc2cc3CN(CC(=O)N3C(C(=O)C)C(=O)OC)c3ccccc32)cc1 failed to sanitize.
+17:19:47 <INFO> Sampled SMILES c12CCC(CNCCO)Oc1c(c1N(CCCCCC(=O)O)C(=O)c3c1c2C(CCC3(C)C)(CCCC)CC)CCC failed to sanitize.
+17:19:47 <INFO> Sampled SMILES c1cc2C(C(C(O)=O)=Cc3c4c(cccc4)n(c23)S(c2ccc(cc2)C)(=O)=O)c2c1cccc2 failed to sanitize.
+17:19:47 <INFO> Sampled SMILES c1c2c(ccc1)sc([o+]c1ccc(F)cc21)=S failed to sanitize.
+17:19:47 <INFO> Sampled SMILES c12cc([N+]([O-])=O)ccc2c2c3c(ccc2)c2cc(cc(C#N)c23)c1 failed to sanitize.
+17:19:47 <INFO> Sampled SMILES c1(OCCCCCC)c2cccc3ccc4cccc(c2)cc4c31 failed to sanitize.
+17:19:47 <INFO> Sampled SMILES c1cc2=C(C#N)[N+](c2cc1)=C=c1ccc(o1)=C1C=CC(=C(C#N)C#N)C=C1 failed to sanitize.
+17:19:47 <INFO> Removed 15 invalid SMILES
+17:19:47 <INFO> Peak main memory usage: 1227.863 MiB
+17:19:47 <INFO> Peak reserved GPU memory usage: 146.000 MiB
+17:19:47 <INFO> Finished REINVENT on 2026-07-28
