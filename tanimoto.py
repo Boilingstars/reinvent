@@ -14,8 +14,8 @@ from collections import defaultdict
 from typing import List, Dict, Tuple
 
 try:
-    from rdkit import Chem
-    from rdkit.Chem import AllChem, DataStructs, RDLogger
+    from rdkit import Chem, RDLogger
+    from rdkit.Chem import AllChem, DataStructs
     from rdkit import __version__ as rdkit_version
     RDLogger.DisableLog("rdApp.*")  # глушим rdkit warnings
 except ImportError:
@@ -124,7 +124,7 @@ def discover_epoch_files(results_dir: str) -> Dict[int, List[str]]:
             continue
         # берём последнее "разумное" число в имени как номер эпохи
         epoch = int(digits)
-        if 0 < epoch < 10000:
+        if 0 <= epoch < 10000:
             epoch_to_files[epoch].append(f)
 
     return dict(sorted(epoch_to_files.items()))
