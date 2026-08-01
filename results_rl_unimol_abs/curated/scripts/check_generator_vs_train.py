@@ -54,7 +54,7 @@ except Exception:
     HAVE_UMAP = False
 
 CURATED = Path(__file__).resolve().parents[1]
-DEFAULT_RL = CURATED / "data" / "rl_unimol_abs_1.csv"
+DEFAULT_RL = CURATED / "data" / "rl_tl_sweep_20260801_090230_ep04_1.csv"
 DEFAULT_TRAIN = CURATED / "data" / "refs" / "train.smi"
 if not DEFAULT_TRAIN.is_file():
     DEFAULT_TRAIN = ROOT / "data" / "train.smi"
@@ -596,6 +596,8 @@ def main() -> None:
     # Markdown report
     lines = [
         "# Generator check vs training set",
+        "",
+        f"**Source:** `{args.rl_csv.name}` (epoch 4 TL sweep)",
         "",
         f"**Conditions:** `{cond_label}`",
         "",

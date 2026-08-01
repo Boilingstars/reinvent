@@ -1,24 +1,22 @@
 {
-  "n": 25,
+  "n": 126,
   "exact_in_train": 0,
   "exact_in_chembl": 0,
   "exact_in_molecules_csv": 0,
   "exact_in_pubchem": 5,
   "tier_counts_local": {
-    "moderate_similarity": 9,
-    "close_analog": 6,
-    "near_duplicate": 6,
-    "highly_novel": 4
+    "moderate_similarity": 109,
+    "highly_novel": 14,
+    "close_analog": 3
   },
   "tier_counts_combined": {
-    "moderate_similarity": 9,
-    "close_analog": 5,
+    "moderate_similarity": 105,
+    "highly_novel": 14,
     "exact_known_pubchem": 5,
-    "highly_novel": 4,
-    "near_duplicate": 2
+    "close_analog": 2
   },
-  "mean_max_tc_train": 0.6562484701529072,
-  "mean_max_tc_any_ref": 0.656466651971089,
+  "mean_max_tc_train": 0.4478574304518416,
+  "mean_max_tc_any_ref": 0.507394644347023,
   "definitions": {
     "exact_known": "canonical SMILES match in train / ChEMBL / molecules.csv",
     "exact_known_pubchem": "exact structure in PubChem (CID>0), not in local refs",

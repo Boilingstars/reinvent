@@ -266,6 +266,33 @@ def main() -> None:
         img.save(str(OUT / "07_scscore_pass_novelty_structures.png"))
         print("[OK] 07_scscore_pass_novelty_structures.png")
 
+    # highly novel only (Tc<0.40 local, no PubChem preferred in legend)
+    hn = res[res["novelty_tier_local"] == "highly_novel"].sort_values("max_tc_any_ref").reset_index(drop=True)
+    hn_dir = OUT / "highly_novel_mols"
+    hn_dir.mkdir(parents=True, exist_ok=True)
+    for old in hn_dir.glob("novel_*.png"):
+        old.unlink()
+    if not hn.empty:
+        mols_hn, legs_hn = [], []
+        for i, r in hn.iterrows():
+            m = Chem.MolFromSmiles(r["canon"])
+            if m is None:
+                continue
+            AllChem.Compute2DCoords(m)
+            mols_hn.append(m)
+            pub = f"CID {int(r['pubchem_cid'])}" if pd.notna(r["pubchem_cid"]) else "no PubChem"
+            legs_hn.append(
+                f"#{i+1}  Tc={r['max_tc_any_ref']:.2f}  {pub}\n"
+                f"Score={r['score']:.3f}  SA={r['sa']:.2f}  SC={r['scscore']:.2f}"
+            )
+            Draw.MolToFile(m, str(hn_dir / f"novel_{i+1:02d}.png"), size=(400, 320))
+        if mols_hn:
+            img = Draw.MolsToGridImage(mols_hn, molsPerRow=2, subImgSize=(360, 320), legends=legs_hn)
+            img.save(str(OUT / "08_highly_novel_structures.png"))
+            print(f"[OK] 08_highly_novel_structures.png (n={len(mols_hn)})")
+    else:
+        print("[WARN] no highly_novel molecules for 08_*.png")
+
     print(json.dumps(summary, indent=2))
     cols = [
         "novelty_tier_local",

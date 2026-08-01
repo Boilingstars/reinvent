@@ -15,17 +15,17 @@
       480.0
     ]
   },
-  "n_baseline": 334,
-  "n_pass_sa": 317,
-  "n_pass_scscore": 25,
-  "n_pass_sa_and_scscore": 25,
-  "n_pass_all": 25,
-  "frac_baseline_kept_sa": 0.9491017964071856,
-  "frac_baseline_kept_scscore": 0.0748502994011976,
-  "frac_baseline_kept_both": 0.0748502994011976,
-  "mean_sa_baseline": 3.1775455089820364,
-  "mean_scscore_baseline": 4.214382689373758,
-  "corr_sa_scscore_highscore": 0.6086754620085928,
+  "n_baseline": 370,
+  "n_pass_sa": 338,
+  "n_pass_scscore": 126,
+  "n_pass_sa_and_scscore": 125,
+  "n_pass_all": 125,
+  "frac_baseline_kept_sa": 0.9135135135135135,
+  "frac_baseline_kept_scscore": 0.34054054054054056,
+  "frac_baseline_kept_both": 0.33783783783783783,
+  "mean_sa_baseline": 3.098483513513514,
+  "mean_scscore_baseline": 3.5200655381243977,
+  "corr_sa_scscore_highscore": 0.5782072525031762,
   "rascore_available": false,
   "rdkit_sa_available": true
 }

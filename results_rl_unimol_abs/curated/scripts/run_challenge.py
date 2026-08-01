@@ -15,6 +15,7 @@ Usage:
 
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 
@@ -34,7 +35,7 @@ RDLogger.DisableLog("rdApp.*")
 
 CURATED = Path(__file__).resolve().parents[1]
 OUT = CURATED / "generator_check" / "challenge"
-RL_CSV = CURATED / "data" / "rl_unimol_abs_1.csv"
+RL_CSV = CURATED / "data" / "rl_tl_sweep_20260801_090230_ep04_1.csv"
 NOVELTY_CSV = CURATED / "generator_check" / "tables" / "rl_with_novelty.csv"
 MOLECULES_CSV = CURATED / "data" / "molecules.csv"
 TRAIN_SMI = CURATED / "data" / "refs" / "train.smi"
@@ -135,8 +136,8 @@ def scaffold_stats(labels: pd.Series) -> dict:
     }
 
 
-def load_rl() -> pd.DataFrame:
-    df = pd.read_csv(RL_CSV)
+def load_rl(rl_csv: Path | None = None, novelty_csv: Path | None = None) -> pd.DataFrame:
+    df = pd.read_csv(rl_csv or RL_CSV)
     df["valid"] = df["SMILES_state"] == 1 if "SMILES_state" in df.columns else True
     df["score"] = pd.to_numeric(df["Score"], errors="coerce").fillna(0.0)
     df["prior"] = pd.to_numeric(df["Prior"], errors="coerce")
@@ -158,8 +159,9 @@ def load_rl() -> pd.DataFrame:
         & (df["lambda_nm"] <= LAM_MAX)
         & (df["score"] >= SCORE_THR)
     )
-    if NOVELTY_CSV.is_file():
-        nov = pd.read_csv(NOVELTY_CSV)
+    nov_path = novelty_csv or NOVELTY_CSV
+    if nov_path.is_file():
+        nov = pd.read_csv(nov_path)
         if "SMILES" in nov.columns and "max_tc_train" in nov.columns:
             df["max_tc_train"] = df["SMILES"].map(dict(zip(nov["SMILES"], nov["max_tc_train"])))
     if "max_tc_train" not in df.columns:
@@ -550,15 +552,22 @@ def task_prior_hacking(df: pd.DataFrame, out: Path) -> dict:
 
 
 def main() -> None:
+    p = argparse.ArgumentParser(description="REINVENT challenge suite")
+    p.add_argument("--rl-csv", type=Path, default=RL_CSV)
+    p.add_argument("--novelty-csv", type=Path, default=NOVELTY_CSV)
+    p.add_argument("--out", type=Path, default=OUT)
+    args = p.parse_args()
+
     set_style()
-    out = OUT
+    out = args.out
     out.mkdir(parents=True, exist_ok=True)
     (out / "tables").mkdir(exist_ok=True)
 
-    df = load_rl()
-    print(f"[INFO] valid={df['valid'].sum()}  on_target={df['on_target'].sum()}")
+    df = load_rl(args.rl_csv, args.novelty_csv)
+    print(f"[INFO] rl={args.rl_csv.name}  valid={df['valid'].sum()}  on_target={df['on_target'].sum()}")
 
     summary = {
+        "source_rl_csv": str(args.rl_csv),
         "definitions": {
             "target_property": f"λ∈[{LAM_MIN},{LAM_MAX}] nm and Score≥{SCORE_THR}, clean+valid",
             "target_chemical_space": "molecules.csv (literature chromophores)",
@@ -609,6 +618,8 @@ def main() -> None:
     ph = summary["prior_drift_reward_hacking"]
 
     report = f"""# Challenge report
+
+**Source:** `{args.rl_csv.name}` (epoch 4 TL sweep)
 
 Five exams of the RL generator. One figure per exam.
 

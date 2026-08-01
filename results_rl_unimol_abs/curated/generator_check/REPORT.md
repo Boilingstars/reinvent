@@ -1,13 +1,15 @@
 # Generator check vs training set
 
+**Source:** `rl_tl_sweep_20260801_090230_ep04_1.csv` (epoch 4 TL sweep)
+
 **Conditions:** `valid & clean & λ>0 & λ∈[450.0,480.0] & Score≥0.8`
 
 ## Summary
-- RL rows: **1984**
-- Pass conditions: **334** (16.8%)
-- Pass & novel (not exact train): **334**
-- Mean max-Tc to train (pass): **0.510**
-- Mean Score (pass): **0.923**
+- RL rows: **3200**
+- Pass conditions: **370** (11.6%)
+- Pass & novel (not exact train): **370**
+- Mean max-Tc to train (pass): **0.365**
+- Mean Score (pass): **0.922**
 
 ## Figures
 - `01_score_colored_overview.png` — Score / λ / novelty / funnel

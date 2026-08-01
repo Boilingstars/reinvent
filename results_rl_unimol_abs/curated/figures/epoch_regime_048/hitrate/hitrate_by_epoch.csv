@@ -1,0 +1,4 @@
+epoch,n_generated,n_rdkit_valid,hitrate_rdkit_valid,n_reinvent_valid,hitrate_reinvent_valid,n_chromophore_like,hitrate_chromophore_like,chromophore_threshold
+0,3200,2921,0.9128125,2921,0.9128125,43,0.0134375,0.4
+4,3200,2831,0.8846875,2826,0.883125,599,0.1871875,0.4
+8,3200,2872,0.8975,2872,0.8975,1028,0.32125,0.4

@@ -32,7 +32,7 @@ CURATED = Path(__file__).resolve().parents[1]
 SCRIPTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS))
 
-DEFAULT_RL = CURATED / "data" / "rl_unimol_abs_1.csv"
+DEFAULT_RL = CURATED / "data" / "rl_tl_sweep_20260801_090230_ep04_1.csv"
 DEFAULT_OUT = CURATED / "generator_check" / "synthesizability"
 
 from scscore_wrapper import scscore_smiles  # noqa: E402
@@ -428,6 +428,31 @@ def main() -> None:
         cols.append("step")
     df.loc[pass_all, cols].to_csv(out / "tables" / "synth_pass_molecules.csv", index=False)
     df.to_csv(out / "tables" / "rl_with_synth_scores.csv", index=False)
+    # SCScore-pass table used by novelty / UMAP follow-ups
+    sc_cols = [c for c in cols if c in df.columns]
+    sc_pass = df.loc[pass_sc, sc_cols].sort_values(["scscore", "score"], ascending=[True, False]).reset_index(drop=True)
+    sc_pass.to_csv(out / "tables" / "scscore_pass_sorted.csv", index=False)
+    df.loc[base, sc_cols].to_csv(out / "tables" / "rl_with_synth_flags.csv", index=False)
+
+    # structure grid for SCScore-pass (cap for readability)
+    try:
+        from rdkit import Chem
+        from rdkit.Chem import Draw
+
+        show = sc_pass.head(25)
+        mols, legs = [], []
+        for _, r in show.iterrows():
+            m = Chem.MolFromSmiles(str(r["SMILES"]))
+            if m is None:
+                continue
+            mols.append(m)
+            legs.append(f"S={r['score']:.2f} SC={r['scscore']:.2f}\nSA={r['sa']:.2f}")
+        if mols:
+            img = Draw.MolsToGridImage(mols, molsPerRow=5, subImgSize=(260, 240), legends=legs)
+            img.save(str(out / "04_scscore_pass_structures.png"))
+            print("[OK] 04_scscore_pass_structures.png")
+    except Exception as e:
+        print(f"[WARN] structure grid skipped: {e}")
 
     plot_methods_overview(df, out, args.max_sa, args.max_scscore)
     plot_funnel_compare(df, masks, out)

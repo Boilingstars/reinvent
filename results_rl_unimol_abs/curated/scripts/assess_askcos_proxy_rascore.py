@@ -52,6 +52,15 @@ def rascore_predict(scorer: RAScorerXGB, smiles: str) -> float:
 def main() -> None:
     nov = pd.read_csv(OUT / "tables" / "scscore_pass_novelty.csv")
     hn = nov[nov["novelty_tier_local"] == "highly_novel"].sort_values("max_tc_any_ref").reset_index(drop=True)
+    if hn.empty:
+        print("[WARN] no highly_novel molecules — skip RAscore proxy")
+        (OUT / "tables").mkdir(parents=True, exist_ok=True)
+        pd.DataFrame().to_csv(OUT / "tables" / "highly_novel_askcos_proxy_rascore.csv", index=False)
+        (OUT / "tables" / "highly_novel_askcos_proxy_summary.json").write_text(
+            json.dumps({"n_highly_novel": 0, "skipped": True}, indent=2),
+            encoding="utf-8",
+        )
+        return
 
     scorer = RAScorerXGB()
     rows = []
