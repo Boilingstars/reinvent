@@ -1,0 +1,31 @@
+{
+  "methods": {
+    "sa_ertl": "fragment heuristic 1\u201310, \u2193 easier",
+    "scscore_reaxys": "NN on ~12M Reaxys reactions, 1\u20135, \u2193 easier (Coley et al.)",
+    "rascore": "optional AiZynth success proxy 0\u20131, \u2191 better"
+  },
+  "thresholds": {
+    "max_sa": 4.0,
+    "max_scscore": 3.0,
+    "min_rascore": null,
+    "min_qed": null,
+    "min_score": 0.8,
+    "lambda_window": [
+      450.0,
+      480.0
+    ]
+  },
+  "n_baseline": 334,
+  "n_pass_sa": 317,
+  "n_pass_scscore": 25,
+  "n_pass_sa_and_scscore": 25,
+  "n_pass_all": 25,
+  "frac_baseline_kept_sa": 0.9491017964071856,
+  "frac_baseline_kept_scscore": 0.0748502994011976,
+  "frac_baseline_kept_both": 0.0748502994011976,
+  "mean_sa_baseline": 3.1775455089820364,
+  "mean_scscore_baseline": 4.214382689373758,
+  "corr_sa_scscore_highscore": 0.6086754620085928,
+  "rascore_available": false,
+  "rdkit_sa_available": true
+}

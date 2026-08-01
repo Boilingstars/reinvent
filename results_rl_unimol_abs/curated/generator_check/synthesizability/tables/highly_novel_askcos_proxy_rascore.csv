@@ -1,0 +1,5 @@
+id,SMILES,score,sa,scscore,max_tc_any_ref,lambda_nm,RAscore,casp_access_label,method_note
+1,COc1ccc(NC(C=C(C#N)SCC(C)C#N)=C(C#N)C#N)cc1,0.9620263,3.8711,2.7841271765897257,0.2777777777777778,467.2365,0.9543840289115906,likely_accessible,RAscore_XGB = P(AiZynthFinder route); ASKCOS server unavailable
+2,N#CC(C#N)=CC1=CC(c2ccccc2)Nc2ccccc2N1,0.9626018,3.4132,2.711243165586695,0.32,477.3025,0.7903131246566772,likely_accessible,RAscore_XGB = P(AiZynthFinder route); ASKCOS server unavailable
+3,N#CC(C#N)=CC=Cc1ccc[nH]1,0.9621827,3.4285,2.3328916583836694,0.3414634146341463,454.0344,0.8652448058128357,likely_accessible,RAscore_XGB = P(AiZynthFinder route); ASKCOS server unavailable
+4,COc1ccc(-c2sc3ncc[n+](C)c3c2-c2ccc(OC)cc2)cc1,0.9623789,2.597,2.7622772755157268,0.36,452.8543,0.5784592032432556,uncertain,RAscore_XGB = P(AiZynthFinder route); ASKCOS server unavailable

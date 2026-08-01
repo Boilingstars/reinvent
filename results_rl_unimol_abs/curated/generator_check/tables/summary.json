@@ -1,0 +1,16 @@
+{
+  "conditions": "valid & clean & \u03bb>0 & \u03bb\u2208[450.0,480.0] & Score\u22650.8",
+  "n_rl_rows": 1984,
+  "n_valid": 1809,
+  "n_clean": 1542,
+  "n_pass_conditions": 334,
+  "pass_rate": 0.16834677419354838,
+  "n_pass_novel": 334,
+  "frac_pass_in_train": 0.0,
+  "mean_score_all": 0.4734675617468214,
+  "mean_score_pass": 0.9233996592814371,
+  "mean_max_tc_all": 0.46545214294465564,
+  "mean_max_tc_pass": 0.5095873919001748,
+  "median_max_tc_pass": 0.49397849462365595,
+  "n_train_fps": 3000
+}

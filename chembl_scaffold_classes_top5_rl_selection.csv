@@ -1,0 +1,6 @@
+rank,scaffold_class,selection_criterion
+1,stilbene,top5 by RL mean max Morgan Tanimoto (from top10 merge)
+2,benzothiazole,top5 by RL mean max Morgan Tanimoto (from top10 merge)
+3,chalcone,top5 by RL mean max Morgan Tanimoto (from top10 merge)
+4,azobenzene,top5 by RL mean max Morgan Tanimoto (from top10 merge)
+5,thiazolidinedione,top5 by RL mean max Morgan Tanimoto (from top10 merge)

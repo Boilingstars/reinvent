@@ -1,2 +1,0 @@
-n_rows,n_unique_smiles,frac_valid,frac_has_lambda,frac_clean_unwanted,steps,score_mean,score_median,lambda_nm_mean_positive,lambda_nm_median_positive,top_score,best_smiles,best_lambda_nm
-1984,1964,0.9117943548387096,0.7762096774193549,0.7772177419354839,"[1, 31]",0.43170505000000003,0.3691895,428.73929363636364,436.65015,0.9776513,Cn1ccc(C=Cc2ccc(C=C(C#N)C#N)s2)cc1=O,460.9145

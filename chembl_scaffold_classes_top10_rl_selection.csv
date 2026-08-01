@@ -1,0 +1,11 @@
+rank,scaffold_class,selection_criterion
+1,stilbene,top10 by mean max Morgan Tanimoto of RL molecules to class (set1+set2)
+2,chalcone,top10 by mean max Morgan Tanimoto of RL molecules to class (set1+set2)
+3,benzothiazole,top10 by mean max Morgan Tanimoto of RL molecules to class (set1+set2)
+4,azobenzene,top10 by mean max Morgan Tanimoto of RL molecules to class (set1+set2)
+5,thiazolidinedione,top10 by mean max Morgan Tanimoto of RL molecules to class (set1+set2)
+6,quinazoline,top10 by mean max Morgan Tanimoto of RL molecules to class (set1+set2)
+7,benzimidazole,top10 by mean max Morgan Tanimoto of RL molecules to class (set1+set2)
+8,phenothiazine,top10 by mean max Morgan Tanimoto of RL molecules to class (set1+set2)
+9,quinoline,top10 by mean max Morgan Tanimoto of RL molecules to class (set1+set2)
+10,coumarin,top10 by mean max Morgan Tanimoto of RL molecules to class (set1+set2)

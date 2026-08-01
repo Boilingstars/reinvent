@@ -1,0 +1,66 @@
+{
+  "askcos_status": "unavailable_locally",
+  "askcos_reason": [
+    "Docker not installed",
+    "WSL not installed",
+    "askcos-demo.mit.edu API returns 401 (auth required)"
+  ],
+  "proxy_method": "RAscore_XGB (Reymond) \u2014 ML estimate of CASP route-finding probability",
+  "proxy_relation_to_askcos": "RAscore is trained on AiZynthFinder solved/unsolved labels; AiZynthFinder and ASKCOS are both CASP tools used for synthesizability filtering (see Thakkar et al., Chem. Sci. 2021). Not identical to ASKCOS Tree Builder.",
+  "n": 4,
+  "mean_RAscore": 0.7971002906560898,
+  "label_counts": {
+    "likely_accessible": 3,
+    "uncertain": 1
+  },
+  "molecules": [
+    {
+      "id": 1,
+      "SMILES": "COc1ccc(NC(C=C(C#N)SCC(C)C#N)=C(C#N)C#N)cc1",
+      "score": 0.9620263,
+      "sa": 3.8711,
+      "scscore": 2.7841271765897257,
+      "max_tc_any_ref": 0.2777777777777778,
+      "lambda_nm": 467.2365,
+      "RAscore": 0.9543840289115906,
+      "casp_access_label": "likely_accessible",
+      "method_note": "RAscore_XGB = P(AiZynthFinder route); ASKCOS server unavailable"
+    },
+    {
+      "id": 2,
+      "SMILES": "N#CC(C#N)=CC1=CC(c2ccccc2)Nc2ccccc2N1",
+      "score": 0.9626018,
+      "sa": 3.4132,
+      "scscore": 2.711243165586695,
+      "max_tc_any_ref": 0.32,
+      "lambda_nm": 477.3025,
+      "RAscore": 0.7903131246566772,
+      "casp_access_label": "likely_accessible",
+      "method_note": "RAscore_XGB = P(AiZynthFinder route); ASKCOS server unavailable"
+    },
+    {
+      "id": 3,
+      "SMILES": "N#CC(C#N)=CC=Cc1ccc[nH]1",
+      "score": 0.9621827,
+      "sa": 3.4285,
+      "scscore": 2.3328916583836694,
+      "max_tc_any_ref": 0.3414634146341463,
+      "lambda_nm": 454.0344,
+      "RAscore": 0.8652448058128357,
+      "casp_access_label": "likely_accessible",
+      "method_note": "RAscore_XGB = P(AiZynthFinder route); ASKCOS server unavailable"
+    },
+    {
+      "id": 4,
+      "SMILES": "COc1ccc(-c2sc3ncc[n+](C)c3c2-c2ccc(OC)cc2)cc1",
+      "score": 0.9623789,
+      "sa": 2.597,
+      "scscore": 2.7622772755157268,
+      "max_tc_any_ref": 0.36,
+      "lambda_nm": 452.8543,
+      "RAscore": 0.5784592032432556,
+      "casp_access_label": "uncertain",
+      "method_note": "RAscore_XGB = P(AiZynthFinder route); ASKCOS server unavailable"
+    }
+  ]
+}
